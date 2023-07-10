@@ -118,6 +118,9 @@ def _get_parser():
                                       'running multiple trainers on a single node, this generally needs '
                                       'to be unique for each one. Overrides env var MASTER_PORT. Defaults '
                                       'to a random free port in a single-node environment.'))
+    multinode_args.add_argument('--use-smddp', action='store_true', 
+                                help='Use Sagemaker Distributed Data Parallel backend. Only available with AWS ' 
+                                'Sagemaker ml.p3.16xlarge, ml.p3dn.24xlarge or ml.p4d[e].24xlarge instance types' )
 
     required_args.add_argument('training_script',
                                type=str,
@@ -256,6 +259,7 @@ def _launch_processes(
     node_rank: int,
     master_addr: str,
     master_port: int,
+    use_smddp: int,
     module_mode: bool,
     command_mode: bool,
     training_script: str,
@@ -288,6 +292,7 @@ def _launch_processes(
                 NODE_RANK=str(node_rank),
                 MASTER_ADDR=master_addr,
                 MASTER_PORT=str(master_port),
+                USE_SMDDP=str(int(use_smddp)),
                 PYTHONUNBUFFERED='1',
                 NCCL_ASYNC_ERROR_HANDLING='1',
         ):
@@ -480,6 +485,7 @@ def main():
                           node_rank=args.node_rank,
                           master_addr=args.master_addr,
                           master_port=args.master_port,
+                          use_smddp=args.use_smddp,
                           module_mode=args.module_mode,
                           command_mode=args.command_mode,
                           stdout_file_format=args.stdout,

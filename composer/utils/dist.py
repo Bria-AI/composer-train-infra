@@ -48,6 +48,10 @@ from composer.utils.device import get_device
 if TYPE_CHECKING:
     from composer.devices import Device
 
+if os.environ.get('USE_SMDDP') == "1":
+    import smdistributed.dataparallel.torch.torch_smddp
+
+
 TObj = TypeVar('TObj')
 
 __all__ = [
@@ -103,6 +107,11 @@ def _get_distributed_config_var(
 
     return default
 
+def get_smddp() -> int:
+    return _get_distributed_config_var(env_var='USE_SMDDP',
+                                       human_name='Sagemaker DDP',
+                                       default=True,
+                                       fetch_fn_name='get_smddp')
 
 def get_world_size() -> int:
     """Returns the world size, which is the number of processes participating in this training run.
@@ -408,12 +417,13 @@ def initialize_dist(device: Union[str, Device], timeout: float = 300.0):
     }
 
     log.debug(
-        'Initializing torch.dist: global_rank=%d, local_rank=%d, world_size=%d, local_world_size=%d, node_rank=%d',
+        'Initializing torch.dist: global_rank=%d, local_rank=%d, world_size=%d, local_world_size=%d, node_rank=%d, smddp=%d',
         get_global_rank(),
         get_local_rank(),
         get_world_size(),
         get_local_world_size(),
         get_node_rank(),
+        get_smddp(),
     )
 
     dist_env_vars_match_defaults = all(os.environ.get(k, v) == v for (k, v) in dist_env_var_defaults.items())
@@ -422,6 +432,8 @@ def initialize_dist(device: Union[str, Device], timeout: float = 300.0):
         # Fill in the remaining single-rank variables
         os.environ.update(dist_env_var_defaults)
         dist.init_process_group(device_obj.dist_backend, store=dist.HashStore(), world_size=1, rank=0)
+    elif get_smddp():
+        dist.init_process_group(backend='smddp', timeout=timeout_timedelta)
     else:
         dist.init_process_group(device_obj.dist_backend, timeout=timeout_timedelta)
 
