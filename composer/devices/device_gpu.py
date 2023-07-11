@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, Optional, TypeVar
 
 import torch
@@ -31,7 +32,10 @@ class DeviceGPU(Device):
         allow_tf32 (bool, optional): Whether to allow TF32 matrix multiplications. Defaults to True.
             For more information, see :ref:`torch:tf32_on_ampere`.
     """
-    dist_backend = 'nccl'
+    if os.environ.get('SM_DISTRIBUTION_INSTANCE_GROUPS'):
+        dist_backend = 'smddp'
+    else:
+        dist_backend = 'nccl'
     name = 'gpu'
 
     def __init__(
